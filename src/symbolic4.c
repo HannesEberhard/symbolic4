@@ -53,7 +53,6 @@ uint8_t symbolic4(char* buffer, const char* query) {
     
     allocated_pointers = calloc(ALLOCATED_POINTERS_LENGTH, sizeof(void*));
     memset(allocated_pointers, 0, ALLOCATED_POINTERS_LENGTH);
-    buffer[0] = '\0';
     
     root = new_expression(EXPT_STRUCTURE, EXPI_LIST, 0);
 

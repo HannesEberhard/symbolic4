@@ -81,40 +81,14 @@ void risch_get_extensions(expression* extensions, expression* source, expression
     
 }
 
-uint8_t risch_determine_parts(expression** polynominal_part, expression** rational_part, expression* source, expression* variable, expression* extensions) {
+uint8_t risch_determine_parts(expression** polynominal_part, expression** rational_part, const expression* source, const expression* variable, const expression* extensions) {
     
-    int8_t index;
+    uint8_t i;
     expression* quotient;
     expression* remainder;
     expression* temp;
     
-    if (extensions->child_count > 0) {
-        if (any_expression_to_sparse_polynomial(source, extensions->children[extensions->child_count - 1]->children[1]) == RETS_SUCCESS) {
-            *polynominal_part = source;
-            *rational_part = NULL;
-            return RETS_SUCCESS;
-        }
-    } else if ((index = expression_contains_division(source)) != -1) {
-        
-        source->children[index]->children[1]->sign = 1;
-        temp = copy_expression(source->children[index]);
-        
-        simplify(temp, true);
-        
-        ERROR_CHECK(any_expression_to_sparse_polynomial(temp, variable));
-        ERROR_CHECK(validate_sparse_polynomial(temp, false, false, false));
-        
-        ERROR_CHECK(any_expression_to_sparse_polynomial(source->children[0], variable));
-        ERROR_CHECK(validate_sparse_polynomial(temp, false, false, false));
-        
-        poly_div(&quotient, &remainder, source->children[0], temp);
-        
-        *polynominal_part = quotient;
-        *rational_part = new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
-                                        remainder,
-                                        temp);
-        
-    } else if (expression_is_reziprocal(source)) {
+    if (expression_is_reziprocal(source)) {
         
         *polynominal_part = NULL;
         
@@ -122,6 +96,7 @@ uint8_t risch_determine_parts(expression** polynominal_part, expression** ration
                                         new_literal(1, 1, 1),
                                         copy_expression(source));
         
+
         (*rational_part)->children[1]->children[1]->sign = 1;
         
         simplify(*rational_part, true);
@@ -129,11 +104,42 @@ uint8_t risch_determine_parts(expression** polynominal_part, expression** ration
         ERROR_CHECK(any_expression_to_sparse_polynomial((*rational_part)->children[0], variable));
         ERROR_CHECK(any_expression_to_sparse_polynomial((*rational_part)->children[1], variable));
         
+    } else if (source->identifier == EXPI_MULTIPLICATION) {
+        
+        temp = new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
+                              new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 0),
+                              new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 0));
+        
+        for (i = 0; i < source->child_count; i++) {
+            if (expression_is_reziprocal(source->children[i])) {
+                append_child(temp->children[1], copy_expression(source->children[i]));
+                temp->children[1]->children[temp->children[1]->child_count - 1]->children[1]->sign = 1;
+            } else {
+                append_child(temp->children[0], copy_expression(source->children[i]));
+            }
+        }
+        
+        simplify(temp, true);
+        
+        ERROR_CHECK(any_expression_to_sparse_polynomial(temp->children[0], variable));
+        ERROR_CHECK(validate_sparse_polynomial(temp->children[0], false, false, false));
+        
+        ERROR_CHECK(any_expression_to_sparse_polynomial(temp->children[1], variable));
+        ERROR_CHECK(validate_sparse_polynomial(temp->children[1], false, false, false));
+        
+        poly_div(&quotient, &remainder, temp->children[0], temp->children[1], -1);
+        
+        *polynominal_part = quotient;
+        *rational_part = new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
+                                        remainder,
+                                        temp->children[1]);
+        
     } else {
         
         *polynominal_part = copy_expression(source);
         *rational_part = NULL;
         ERROR_CHECK(any_expression_to_sparse_polynomial(*polynominal_part, variable));
+        ERROR_CHECK(validate_sparse_polynomial(*polynominal_part, false, false, false));
         
     }
     
@@ -287,7 +293,7 @@ void rothstein_trager_method(expression* source) {
                 simplify(temp, true);
                 
                 any_expression_to_sparse_polynomial(temp, NULL);
-                poly_GCD(&gcd, temp, copy_expression(source->children[1]));
+                poly_gcd(&gcd, temp, copy_expression(source->children[1]));
                 any_expression_to_expression_recursive(gcd);
                 
                 append_child(result, new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 2,
@@ -384,6 +390,7 @@ uint8_t antiderivative(expression** result, expression* source, expression* vari
         ERROR_CHECK(risch_integrate(temp_source, variable));
     }
     
+    simplify(temp_source, true);
     *result = temp_source;
     
     return RETS_SUCCESS;

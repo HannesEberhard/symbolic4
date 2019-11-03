@@ -118,7 +118,7 @@ typedef struct expression {
     struct expression* parent;
     uint8_t child_count;
     
-#ifdef DEBUG_EXPRESSION_CHILDREN
+#ifdef DEBUG_MODE
     struct expression* children[50];
 #else
     struct expression** children;
@@ -141,6 +141,7 @@ expression* new_trigonometic_periodicity(uint8_t period);
 expression* copy_expression(const expression* source);
 void replace_expression(expression* a, expression* b);
 void free_expression(expression* source, bool persistent);
+void free_expressions(uint8_t expression_count, ...);
 void free_all_except(expression* source);
 void append_child(expression* parent, expression* child);
 void set_parents(expression* source);
@@ -150,9 +151,9 @@ bool expression_is_greater_than(const expression* a, expression* b, bool persist
 bool expression_is_smaller_than(const expression* a, expression* b, bool persistent);
 bool expression_is_constant(const expression* source);
 bool symbol_is_constant(const expression* source);
-int8_t expression_contains_division(expression* source);
-bool expression_is_reziprocal(expression* source);
-bool expression_is_numerical(expression* source);
+int8_t expression_contains_division(const expression* source);
+bool expression_is_reziprocal(const expression* source);
+bool expression_is_numerical(const expression* source);
 uint8_t count_occurrences(const expression* haystack, expression* needle, bool persistent);
 void collect_symbols(expression* symbols, const expression* source);
 void remove_child_at_index(expression* source, uint8_t index);
@@ -164,11 +165,15 @@ void replace_occurences(expression* source, const expression* child, const expre
 void replace_null_with_zero(expression* source);
 void order_children(expression* source);
 expression* guess_symbol(const expression* source, const char* custom_priorities, uint8_t rank);
+expression* get_symbol(const expression* source);
 expression* double_to_literal(double source);
 double literal_to_double(expression* source);
 void literal_to_double_symbol(expression* source);
 const char* get_expression_string(expression_identifier identifier);
 expression_identifier get_expression_identifier(const char* string);
 void expression_to_string(char* buffer, const expression* source, expression_to_string_format format);
+#ifdef DEBUG_MODE
+void print_expression(const expression* source);
+#endif
 
 #endif /* expression_h */

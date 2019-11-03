@@ -194,7 +194,7 @@ void evaluate_addition(expression* source) {
     
     uint8_t i, j;
     expression* temp_result;
-    expression* result = new_expression(EXPT_OPERATION, EXPI_ADDITION, 0);
+    expression* result;
     
     for (i = 0; i < source->child_count; i++) {
         

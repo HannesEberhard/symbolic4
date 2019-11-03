@@ -28,7 +28,7 @@
 
 #define VERSION "1.0.0"
 #define ALLOCATED_POINTERS_LENGTH 2000
-//#define DEBUG_EXPRESSION_CHILDREN
+//#define DEBUG_MODE
 
 #ifdef _WIN32
 #elif defined(__APPLE__)

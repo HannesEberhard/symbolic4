@@ -257,11 +257,10 @@ expression* new_symbol(expression_identifier identifier, const char* value) {
 
 expression* new_trigonometic_periodicity(uint8_t period) {
     
-    expression* result = new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 0);
-    
-    append_child(result, new_literal(1, period, 1));
-    append_child(result, new_symbol(EXPI_SYMBOL, "n"));
-    append_child(result, new_symbol(EXPI_SYMBOL, "pi"));
+    expression* result = new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 3,
+                                        new_literal(1, period, 1),
+                                        new_symbol(EXPI_SYMBOL, "n"),
+                                        new_symbol(EXPI_SYMBOL, "pi"));
     
     return result;
     
@@ -320,11 +319,27 @@ void free_expression(expression* source, bool persistent) {
     for (i = 0; i < source->child_count; i++) {
         if (source->children[i] == NULL) continue;
         free_expression(source->children[i], false);
+        source->children[i] = NULL;
     }
+    
+    source->child_count = 0;
     
     if (!persistent) smart_free(source);
     
-    return;
+}
+
+void free_expressions(uint8_t expression_count, ...) {
+    
+    uint8_t i;
+    va_list arguments;
+    
+    va_start(arguments, expression_count);
+    
+    for (i = 0; i < expression_count; i++) {
+        free_expression(va_arg(arguments, expression*), false);
+    }
+    
+    va_end(arguments);
     
 }
 
@@ -344,8 +359,6 @@ void free_all_except(expression* source) {
     *source = *copy_expression(temp);
     free_expression(temp, false);
     
-    return;
-    
 }
 
 /**
@@ -353,7 +366,7 @@ void free_all_except(expression* source) {
  @brief Appends a child to an expression
  
  @details
- When @c DEBUG_EXPRESSION_CHILDREN is set to 0 (production mode),
+ When @c DEBUG_MODE is set to 0 (production mode),
  the children pointer is resized to hold the new child.
  
  @param[in,out] parent The destination parent.
@@ -362,7 +375,7 @@ void free_all_except(expression* source) {
  */
 void append_child(expression* parent, expression* child) {
     uint16_t i;
-#ifdef DEBUG_EXPRESSION_CHILDREN
+#ifdef DEBUG_MODE
     parent->children[parent->child_count] = child;
     parent->child_count++;
 #else
@@ -394,19 +407,13 @@ void remove_null_children(expression* source) {
     
     replace_expression(source, result);
     
-    return;
-    
 }
 
 void embed_in_list_if_necessary(expression* source) {
-    
     if (source->identifier != EXPI_LIST) {
         replace_expression(source, new_expression(EXPT_STRUCTURE, EXPI_LIST, 1,
-                                                  copy_expression(source)));
+                                                  source));
     }
-    
-    return;
-    
 }
 
 void merge_nested_lists(expression* source, bool recursive) {
@@ -506,6 +513,7 @@ bool expressions_are_identical(const expression* a, expression* b, bool persiste
     }
     
     if (!persistent) free_expression(b, false);
+    
     return true;
     
 }
@@ -605,7 +613,7 @@ bool symbol_is_constant(const expression* source) {
     }
 }
 
-int8_t expression_contains_division(expression* source) {
+int8_t expression_contains_division(const expression* source) {
     
     uint8_t i;
     
@@ -619,7 +627,7 @@ int8_t expression_contains_division(expression* source) {
     
 }
 
-bool expression_is_reziprocal(expression* source) {
+bool expression_is_reziprocal(const expression* source) {
     
     if (source->identifier == EXPI_EXPONENTATION) {
         if (source->children[1]->sign == -1) return true;
@@ -629,7 +637,7 @@ bool expression_is_reziprocal(expression* source) {
     
 }
 
-bool expression_is_numerical(expression* source) {
+bool expression_is_numerical(const expression* source) {
     
     uint8_t i;
     
@@ -684,8 +692,6 @@ void replace_occurences(expression* source, const expression* child, const expre
         replace_expression(source, copy_expression(replacement));
     }
     
-    return;
-    
 }
 
 void replace_null_with_zero(expression* source) {
@@ -693,14 +699,12 @@ void replace_null_with_zero(expression* source) {
     uint8_t i;
     
     for (i = 0; i < source->child_count; i++) {
-        
         if (source->children[i] == NULL ||
             (source->children[i]->type == EXPT_STRUCTURE && source->children[i]->child_count == 0)) {
             source->children[i] = new_literal(1, 0, 1);
         } else {
             replace_null_with_zero(source->children[i]);
         }
-        
     }
     
 }
@@ -800,8 +804,6 @@ void order_children(expression* source) {
     smart_free(scores);
     replace_expression(source, result);
     
-    return;
-    
 }
 
 void collect_symbols(expression* symbols, const expression* source) {
@@ -816,8 +818,6 @@ void collect_symbols(expression* symbols, const expression* source) {
     if (source->identifier == EXPI_SYMBOL || source->identifier == EXPI_VARIABLE) {
         append_child(symbols, copy_expression(source));
     }
-    
-    return;
     
 }
 
@@ -865,6 +865,16 @@ expression* guess_symbol(const expression* source, const char* custom_priorities
     
 }
 
+expression* get_symbol(const expression* source) {
+    if (source->identifier == EXPI_POLYNOMIAL_SPARSE) {
+        return copy_expression(source->children[0]->children[2]);
+    } else if (source->identifier == EXPI_POLYNOMIAL_DENSE) {
+        return copy_expression(source->children[0]);
+    } else {
+        return guess_symbol(source, "", 0);
+    }
+}
+
 expression* double_to_literal(double source) {
     
     char* buffer = smart_alloc(10, sizeof(char));
@@ -896,8 +906,6 @@ void literal_to_double_symbol(expression* source) {
         dtoa(buffer, 10, literal_to_double(source));
         replace_expression(source, new_symbol(EXPI_SYMBOL, buffer));
     }
-    
-    return;
     
 }
 
@@ -1017,8 +1025,6 @@ void expression_to_string(char* buffer, const expression* source, expression_to_
     
     free_expression(temp_source, false);
     
-    return;
-    
 }
 
 void expression_to_infix(char* buffer, const expression* source) {
@@ -1080,8 +1086,6 @@ void expression_to_infix(char* buffer, const expression* source) {
     }
     
     free_expression(temp_source, false);
-    
-    return;
     
 }
 
@@ -1148,6 +1152,13 @@ void expression_to_tikz(char* buffer, const expression* source) {
     
     free_expression(temp_source, false);
     
-    return;
-    
 }
+
+#ifdef DEBUG_MODE
+void print_expression(const expression* source) {
+    char buffer[500];
+    memset(buffer, '\0', 500);
+    expression_to_string(buffer, source, ETSF_INFIX);
+    printf("%s\n", buffer);
+}
+#endif

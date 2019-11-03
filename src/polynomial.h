@@ -30,15 +30,15 @@
 
 void any_expression_to_expression(expression* source);
 void any_expression_to_expression_recursive(expression* source);
-return_status any_expression_to_sparse_polynomial(expression* source, expression* variable);
-return_status any_expression_to_dense_polynomial(expression* source, expression* variable);
+return_status any_expression_to_sparse_polynomial(expression* source, const expression* variable);
+return_status any_expression_to_dense_polynomial(expression* source, const expression* variable);
 return_status validate_sparse_polynomial(expression* source, bool allow_decimal_exponents, bool allow_negative_exponents, bool allow_arbitrary_base);
 void sort_sparse_polynomial(expression* source);
 return_status polysolve(expression* source, expression* variable);
-uint8_t poly_div(expression** quotient, expression** remainder, expression* poly, expression* divisor);
+uint8_t poly_div(expression** quotient, expression** remainder, const expression* a, const expression* b, int8_t degree);
 bool poly_is_square_free(expression* source);
 void make_monic(expression* source);
-void poly_GCD(expression** gcd, const expression* a, const expression* b);
+uint8_t poly_gcd(expression** gcd, const expression* a, const expression* b);
 void poly_log_gcd(expression** gcd, const expression* source);
 void factor_square_free(expression* source);
 
