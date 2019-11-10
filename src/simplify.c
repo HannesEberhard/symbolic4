@@ -90,8 +90,6 @@ void merge_additions_multiplications(expression* source) {
     
     changed = true;
     
-    return;
-    
 }
 
 uint8_t numeric_addition(expression** result, expression* a, expression* b, bool persistent) {
@@ -238,18 +236,12 @@ void evaluate_addition(expression* source) {
     
     replace_expression(source, result);
     
-    return;
-    
 }
 
 void simplify_addition(expression* source) {
-    
     merge_additions_multiplications(source);
     evaluate_addition(source);
     if (source->child_count > 0) order_children(source);
-    
-    return;
-    
 }
 
 void simplify_subtraction(expression* source) {
@@ -259,7 +251,6 @@ void simplify_subtraction(expression* source) {
                                                              new_literal(-1, 1, 1),
                                                              copy_expression(source->children[1]))));
     changed = true;
-    return;
 }
 
 uint8_t numeric_multiplication(expression** result, expression* a, expression* b, bool persistent) {
@@ -387,8 +378,6 @@ void evaluate_multiplication(expression* source) {
     
     replace_expression(source, result);
     
-    return;
-    
 }
 
 void expand_multiplication_addition_factors(expression* source) {
@@ -410,8 +399,6 @@ void expand_multiplication_addition_factors(expression* source) {
     
     simplify(result, true);
     replace_expression(source, result);
-    
-    return;
     
 }
 
@@ -471,14 +458,10 @@ uint8_t expand_multiplication(expression* source) {
 }
 
 void simplify_multiplication(expression* source) {
-    
     merge_additions_multiplications(source);
     if (expand_multiplication(source) == RETS_CHANGED) return;
     evaluate_multiplication(source);
     order_children(source);
-    
-    return;
-    
 }
 
 void simplify_division(expression* source) {
@@ -491,15 +474,13 @@ void simplify_division(expression* source) {
     
     changed = true;
     
-    return;
-    
 }
 
 void merge_nested_exponentations(expression* source) {
     
     expression* result;
     
-    if (!expression_is_constant(source)) return;
+//    if (!expression_is_constant(source)) return;
     
     if (source->children[0]->identifier == EXPI_EXPONENTATION) {
         result = new_expression(EXPT_OPERATION, EXPI_EXPONENTATION, 2,
@@ -511,8 +492,6 @@ void merge_nested_exponentations(expression* source) {
         simplify(source->children[1], true);
         changed = true;
     }
-    
-    return;
     
 }
 
@@ -682,20 +661,20 @@ uint8_t numeric_exponentation(expression* source) {
     
     if (literal_to_double(factor) == literal_to_double(base_result)) {
         append_child(result, new_expression(EXPT_OPERATION, EXPI_EXPONENTATION, 2,
-                                            base_result,
+                                            copy_expression(base_result),
                                             new_literal(1, exponent->value.numeric.numerator + exponent->value.numeric.denominator, exponent->value.numeric.denominator)));
-        
         remove_exponentation_identities(result->children[result->child_count - 1]);
     } else {
-        if (literal_to_double(factor) != 1) append_child(result, factor);
+        if (literal_to_double(factor) != 1) append_child(result, copy_expression(factor));
         if (literal_to_double(base_result) != 1) append_child(result, new_expression(EXPT_OPERATION, EXPI_EXPONENTATION, 2,
-                                                                                     base_result,
+                                                                                     copy_expression(base_result),
                                                                                      copy_expression(exponent)));
     }
     
     simplify_multiplication(result);
-    
     replace_expression(source, result);
+    
+    free_expressions(2, base_result, factor);
     
     return RETS_CHANGED;
     
@@ -814,8 +793,6 @@ void simplify_abs(expression* source) {
         replace_expression(source, result);
         changed = true;
     }
-    
-    return;
     
 }
 
@@ -1203,8 +1180,6 @@ void approximate_addition(expression* source) {
         append_child(source, double_to_literal(result));
     }
     
-    return;
-    
 }
 
 void approximate_multiplication(expression* source) {
@@ -1228,8 +1203,6 @@ void approximate_multiplication(expression* source) {
         append_child(source, double_to_literal(result));
     }
     
-    return;
-    
 }
 
 void approximate_exponentation(expression* source) {
@@ -1241,8 +1214,6 @@ void approximate_exponentation(expression* source) {
     result = pow(literal_to_double(source->children[0]), literal_to_double(source->children[1]));
     replace_expression(source,  double_to_literal(result));
     
-    return;
-    
 }
 
 void approximate_ln(expression* source) {
@@ -1253,8 +1224,6 @@ void approximate_ln(expression* source) {
     
     result = log(literal_to_double(source->children[0]));
     replace_expression(source,  double_to_literal(result));
-    
-    return;
     
 }
 
@@ -1272,8 +1241,6 @@ void approximate_log(expression* source) {
     }
     
     replace_expression(source, double_to_literal(result));
-    
-    return;
     
 }
 
@@ -1294,8 +1261,6 @@ void approximate_trigonometric(expression* source) {
     }
     
     replace_expression(source, double_to_literal(result));
-    
-    return;
     
 }
 

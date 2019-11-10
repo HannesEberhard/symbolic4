@@ -41,7 +41,7 @@ uint8_t addition_derivative(expression** result, const expression* source, const
     
     for (i = 0; i < source->child_count; i++) {
         if (source->children[i] == NULL) continue;
-        ERROR_CHECK(derivative(&temp_result, source->children[i], copy_expression(variable), true));
+        ERROR_CHECK(derivative(&temp_result, copy_expression(source->children[i]), copy_expression(variable), false));
         append_child(*result, temp_result);
     }
     
@@ -78,11 +78,11 @@ uint8_t exponentation_derivative(expression** result, const expression* source, 
     
     expression* temp_result;
     
-    *result = new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 0);
-    
     if (count_occurrences(source->children[1], copy_expression(variable), false) > 0) {
         
         ERROR_CHECK(derivative(&temp_result, copy_expression(source->children[1]), copy_expression(variable), false));
+        
+        *result = new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 0);
         append_child(*result, copy_expression(source));
         
         if (count_occurrences(source->children[0], copy_expression(variable), false) > 0) {
@@ -210,14 +210,23 @@ uint8_t derivative(expression** result, expression* source, expression* variable
     
     if (variable == NULL) {
         variable = guess_symbol(source, "", 0);
+        if (variable == NULL) {
+            *result = new_literal(1, 0, 1);
+            return RETS_SUCCESS;
+        }
     }
+    
+    any_expression_to_expression_recursive(source);
+    ERROR_CHECK(simplify(source, true));
     
     if (count_occurrences(source, copy_expression(variable), false) == 0) {
         *result = new_literal(1, 0, 1);
+        if (!persistent) {
+            free_expression(source, false);
+            free_expression(variable, false);
+        }
         return RETS_SUCCESS;
     }
-    
-    any_expression_to_expression(source);
     
     switch (source->identifier) {
         case EXPI_SYMBOL: *result = (expressions_are_identical(source, copy_expression(variable), false)) ? new_literal(1, 1, 1) : new_literal(1, 0, 1); break;

@@ -166,6 +166,4 @@ void int_root(uintmax_t* factor, uintmax_t* remainder, uintmax_t base, uintmax_t
     
     free_expression(factors, false);
     
-    return;
-    
 }

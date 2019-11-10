@@ -276,8 +276,6 @@ void tokenize_operator_expression(expression* tokens, char source) {
         append_child(tokens, new_expression(EXPT_OPERATION, identifier, 0));
     }
     
-    return;
-    
 }
 
 void tokenize_control_expression(expression* tokens, char source) {
@@ -289,8 +287,6 @@ void tokenize_control_expression(expression* tokens, char source) {
     }
     
     append_child(tokens, new_expression(EXPT_CONTROL, identifier, 0));
-    
-    return;
     
 }
 
@@ -410,8 +406,6 @@ void merge_expressions_with_operator(expression* output_stack, expression* opera
     append_child(output_stack, operator_stack->children[operator_stack->child_count - 1]);
     operator_stack->child_count--;
     
-    return;
-    
 }
 
 void parse_control_expression(expression* tokens, uint8_t* index, expression* output_stack, expression* operator_stack) {
@@ -451,8 +445,6 @@ void parse_control_expression(expression* tokens, uint8_t* index, expression* ou
             break;
             
     }
-    
-    return;
     
 }
 
@@ -504,7 +496,5 @@ void parse(expression* tokens) {
     
     free_expression(output_stack, false);
     free_expression(operator_stack, false);
-    
-    return;
     
 }

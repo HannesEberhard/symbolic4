@@ -130,9 +130,14 @@ uint8_t risch_determine_parts(expression** polynominal_part, expression** ration
         poly_div(&quotient, &remainder, temp->children[0], temp->children[1], -1);
         
         *polynominal_part = quotient;
-        *rational_part = new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
-                                        remainder,
-                                        temp->children[1]);
+        
+        if (expressions_are_identical(remainder, new_literal(1, 0, 1), false)) {
+            *rational_part = NULL;
+        } else {
+            *rational_part = new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
+                                            remainder,
+                                            temp->children[1]);
+        }
         
     } else {
         
@@ -196,6 +201,7 @@ void rothstein_trager_method(expression* source) {
     expression* resultant_poly;
     expression* resultant;
     expression* primitive_part;
+    expression* primitive_part_factors;
     expression* factor;
     uint8_t factor_degree;
     expression* equation;
@@ -256,17 +262,17 @@ void rothstein_trager_method(expression* source) {
         make_monic(primitive_part);
     }
     
-    factor_square_free(primitive_part);
+    factor_square_free(&primitive_part_factors, primitive_part);
     
-    for (i = 0; i < primitive_part->child_count; i++) {
+    for (i = 0; i < primitive_part_factors->child_count; i++) {
         
-        factor = primitive_part->children[0];
+        factor = primitive_part_factors->children[0];
         
         if (literal_to_double(factor->children[0]) == 1) {
             continue;
         }
         
-        factor_degree = factor->children[0]->children[1]->child_count - 1;
+        factor_degree = factor->children[1]->value.numeric.numerator;
         
         if (factor_degree <= 2) {
             

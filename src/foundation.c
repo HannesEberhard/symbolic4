@@ -115,7 +115,6 @@ void smart_free(void* pointer) {
     for (i = 0; allocated_pointers[i] != pointer && i < ALLOCATED_POINTERS_LENGTH; i++);
     free(pointer);
     allocated_pointers[i] = NULL;
-    return;
 }
 
 /**
@@ -136,7 +135,6 @@ void smart_free_all(void) {
     for (i = 0; i < ALLOCATED_POINTERS_LENGTH; i++) {
         if (allocated_pointers[i] != NULL) smart_free(allocated_pointers[i]);
     }
-    return;
 }
 
 /**
@@ -185,7 +183,6 @@ void set_handle_unrecoverable_error(error_domain domain, error_identifier identi
     current_error.identifier = identifier;
     strcpy(current_error.body, body);
     while (true);
-    return;
 }
 
 double uintmax_max_value(void) {
@@ -231,8 +228,6 @@ void itoa(char* buffer, uintmax_t source) {
     
     buffer[buffer_position] = '\0';
     
-    return;
-    
 }
 
 void dtoa(char* buffer, uint8_t length, double source) {
@@ -255,7 +250,5 @@ void dtoa(char* buffer, uint8_t length, double source) {
     }
     
     buffer[length - 1] = '\0';
-    
-    return;
     
 }

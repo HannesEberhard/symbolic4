@@ -203,21 +203,22 @@ void expression_to_sparse_polynomial_term(expression* source, const expression* 
     
     replace_expression(source, result);
     
-    return;
-    
 }
 
 return_status expression_to_sparse_polynomial(expression* source, const expression* variable) {
     
     uint8_t i;
     expression* temp_source = copy_expression(source);
+    expression* temp_variable;
     expression* result;
     
     if (variable == NULL) {
-        variable = guess_symbol(source, "", 0);
-        if (variable == NULL) {
-            variable = new_symbol(EXPI_SYMBOL, "x");
+        temp_variable = guess_symbol(source, "", 0);
+        if (temp_variable == NULL) {
+            temp_variable = new_symbol(EXPI_SYMBOL, "x");
         }
+    } else {
+        temp_variable = copy_expression(variable);
     }
     
     result = new_expression(EXPT_STRUCTURE, EXPI_POLYNOMIAL_SPARSE, 0);
@@ -225,12 +226,12 @@ return_status expression_to_sparse_polynomial(expression* source, const expressi
     if (temp_source->identifier == EXPI_ADDITION) {
         for (i = 0; i < temp_source->child_count; i++) {
             if (temp_source->children[i] == NULL) continue;
-            expression_to_sparse_polynomial_term(temp_source->children[i], variable);
+            expression_to_sparse_polynomial_term(temp_source->children[i], temp_variable);
             append_child(result, copy_expression(temp_source->children[i]));
         }
     } else {
         simplify(temp_source, true);
-        expression_to_sparse_polynomial_term(temp_source, variable);
+        expression_to_sparse_polynomial_term(temp_source, temp_variable);
         append_child(result, copy_expression(temp_source));
     }
     
@@ -238,10 +239,12 @@ return_status expression_to_sparse_polynomial(expression* source, const expressi
     
     if (validate_sparse_polynomial(result, true, true, true) == RETS_ERROR) {
         free_expression(result, false);
+        free_expression(temp_variable, false);
         return RETS_ERROR;
     } else {
         sort_sparse_polynomial(result);
         replace_expression(source, result);
+        free_expression(temp_variable, false);
         return RETS_SUCCESS;
     }
     
@@ -475,13 +478,10 @@ uint8_t poly_div(expression** quotient, expression** remainder, const expression
     expression* temp_quotient;
     expression* temp_remainder;
     
-    if (a->identifier == EXPI_POLYNOMIAL_SPARSE) {
-        symbol = copy_expression(a->children[0]->children[2]);
-    } else if (b->identifier == EXPI_POLYNOMIAL_SPARSE) {
-        symbol = copy_expression(b->children[0]->children[2]);
-    } else {
-        symbol = new_symbol(EXPI_SYMBOL, "x");
-    }
+    symbol = get_symbol(a);
+    
+    simplify(a_temp, true);
+    simplify(b_temp, true);
     
     if (any_expression_to_sparse_polynomial(a_temp, symbol) == RETS_ERROR ||
         any_expression_to_sparse_polynomial(b_temp, symbol) == RETS_ERROR ||
@@ -495,8 +495,8 @@ uint8_t poly_div(expression** quotient, expression** remainder, const expression
     b_degree = b_temp->children[0]->children[0]->value.numeric.numerator;
     
     if (a_degree < b_degree) {
-        *quotient = new_literal(1, 0, 1);
-        *remainder = copy_expression(a_temp);
+        if (quotient != NULL) *quotient = new_literal(1, 0, 1);
+        if (remainder != NULL) *remainder = copy_expression(a_temp);
         free_expressions(3, symbol, a_temp, b_temp);
         return RETS_SUCCESS;
     }
@@ -504,7 +504,7 @@ uint8_t poly_div(expression** quotient, expression** remainder, const expression
     power = a_degree - b_degree;
     
     coefficient = new_expression(EXPT_OPERATION, EXPI_DIVISION, 2,
-                                 copy_expression((a_temp->children[0]->children[0]->value.numeric.numerator == a_degree) ? a_temp->children[0]->children[1] : new_literal(1, 0, 1)),
+                                 (a_temp->children[0]->children[0]->value.numeric.numerator == a_degree) ? copy_expression(a_temp->children[0]->children[1]) : new_literal(1, 0, 1),
                                  copy_expression(b_temp->children[0]->children[1]));
     simplify(coefficient, true);
     
@@ -514,10 +514,9 @@ uint8_t poly_div(expression** quotient, expression** remainder, const expression
                                              coefficient,
                                              copy_expression(symbol)));
     
-    result = new_expression(EXPT_OPERATION, EXPI_ADDITION, 2,
+    result = new_expression(EXPT_OPERATION, EXPI_SUBTRACTION, 2,
                             copy_expression(a),
-                            new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 3,
-                                           new_literal(-1, 1, 1),
+                            new_expression(EXPT_OPERATION, EXPI_MULTIPLICATION, 2,
                                            copy_expression(monomial),
                                            copy_expression(b)));
     simplify(result, true);
@@ -528,20 +527,28 @@ uint8_t poly_div(expression** quotient, expression** remainder, const expression
     }
     
     if (expressions_are_equivalent(result, new_literal(1, 0, 1), false)) {
-        *quotient = copy_expression(monomial);
-        *remainder = new_literal(1, 0, 1);
+        
+        if (quotient != NULL) *quotient = copy_expression(monomial);
+        if (remainder != NULL) *remainder = new_literal(1, 0, 1);
+        
     } else {
+        
         poly_div(&temp_quotient, &temp_remainder, result, b_temp, a_degree - 1);
+        
         replace_expression(temp_quotient, new_expression(EXPT_OPERATION, EXPI_ADDITION, 2,
                                                          copy_expression(temp_quotient),
                                                          copy_expression(monomial)));
         simplify(temp_quotient, true);
+        
         if (any_expression_to_sparse_polynomial(temp_quotient, symbol) == RETS_ERROR ||
             any_expression_to_sparse_polynomial(temp_remainder, symbol) == RETS_ERROR) {
             return RETS_ERROR;
         }
-        *quotient = temp_quotient;
-        *remainder = temp_remainder;
+        
+        if (quotient != NULL) *quotient = copy_expression(temp_quotient);
+        if (remainder != NULL) *remainder = copy_expression(temp_remainder);
+        free_expressions(2, temp_quotient, temp_remainder);
+        
     }
     
     free_expressions(5, symbol, a_temp, b_temp, monomial, result);
@@ -615,6 +622,9 @@ uint8_t poly_gcd(expression** gcd, const expression* a, const expression* b) {
     a_temp = copy_expression(a);
     b_temp = copy_expression(b);
     
+    simplify(a_temp, true);
+    simplify(b_temp, true);
+    
     symbol = get_symbol(a_temp);
     
     if (any_expression_to_sparse_polynomial(a_temp, symbol) == RETS_ERROR ||
@@ -642,7 +652,7 @@ uint8_t poly_gcd(expression** gcd, const expression* a, const expression* b) {
         poly_gcd(gcd, b_temp, remainder);
     }
     
-    free_expressions(4, symbol, a_temp, b_temp, quotient, remainder);
+    free_expressions(5, symbol, a_temp, b_temp, quotient, remainder);
     
     make_monic(*gcd);
     
@@ -654,63 +664,91 @@ void poly_log_gcd(expression** gcd, const expression* source) {
     
     expression* symbol = get_symbol(source);
     expression* a = copy_expression(source);
-    expression* b = copy_expression(source);
-    expression* b_derivative;
+    expression* a_derivative;
     
     any_expression_to_sparse_polynomial(a, symbol);
-    derivative(&b_derivative, b, symbol, true);
+    derivative(&a_derivative, copy_expression(a), copy_expression(symbol), false);
     
-    any_expression_to_sparse_polynomial(b_derivative, symbol);
+    any_expression_to_sparse_polynomial(a_derivative, symbol);
     
-    poly_gcd(gcd, a, b_derivative);
+    poly_gcd(gcd, a, a_derivative);
     
-    free_expressions(4, symbol, a, b, b_derivative);
+    free_expressions(3, symbol, a, a_derivative);
     
 }
 
-void factor_square_free(expression* source) {
+uint8_t factor_square_free(expression** factors, const expression* source) {
     
-    uint8_t i;
-    expression* gcd;
-    expression* temp_source;
-    expression* rest;
-    expression* quotient;
-    expression* remainder;
-    expression* result = new_expression(EXPT_STRUCTURE, EXPI_LIST, 0);
+    uint8_t i = 1;
+    expression* symbol = get_symbol(source);
+    expression* a = copy_expression(source);
+    expression* b = NULL;
+    expression* c = NULL;
+    expression* g = NULL;
+    expression* w = NULL;
+    expression* y = NULL;
+    expression* z = NULL;
+    expression* temp;
     
-    any_expression_to_expression(source);
-    any_expression_to_sparse_polynomial(source, NULL);
+    *factors = new_expression(EXPT_STRUCTURE, EXPI_LIST, 0);
     
-    if (poly_is_square_free(source)) {
+    derivative(&b, a, symbol, true);
+    poly_log_gcd(&c, a);
+    
+    if (expressions_are_equivalent(c, new_literal(1, 1, 1), false)) {
         
-        append_child(result, new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
-                                            copy_expression(source),
-                                            new_literal(1, 1, 1)));
+        w = copy_expression(a);
         
     } else {
         
-        temp_source = copy_expression(source);
+        poly_div(&w, NULL, a, c, -1);
+        poly_div(&y, NULL, b, c, -1);
         
-        poly_log_gcd(&gcd, temp_source);
-        rest = copy_expression(gcd);
+        derivative(&temp, w, symbol, true);
+        z = new_expression(EXPT_OPERATION, EXPI_SUBTRACTION, 2,
+                           copy_expression(y),
+                           temp);
+        simplify(z, true);
         
-        poly_div(&quotient, &remainder, copy_expression(temp_source), gcd, -1);
-        poly_gcd(&gcd, copy_expression(gcd), copy_expression(quotient));
-        poly_div(&quotient, &remainder, copy_expression(quotient), copy_expression(gcd), -1);
-        
-        factor_square_free(rest);
-        
-        append_child(result, new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
-                                            copy_expression(quotient),
-                                            new_literal(1, 1, 1)));
-        
-        for (i = 0; i < rest->child_count; i++) {
-            rest->children[i]->children[1]->value.numeric.numerator += rest->children[i]->children[1]->value.numeric.numerator;
-            append_child(result, copy_expression(rest->children[i]));
+        while (!expressions_are_equivalent(z, new_literal(1, 0, 1), false)) {
+            
+            free_expression(g, false);
+            poly_gcd(&g, w, z);
+            
+            if (!expressions_are_equivalent(g, new_literal(1, 1, 1), false)) {
+                append_child(*factors, new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
+                                                      copy_expression(g),
+                                                      new_literal(1, i, 1)));
+            }
+            
+            temp = copy_expression(w);
+            free_expression(w, false);
+            poly_div(&w, NULL, temp, g, -1);
+            free_expression(temp, false);
+            
+            free_expression(y, false);
+            poly_div(&y, NULL, z, g, -1);
+
+            derivative(&temp, w, symbol, true);
+            free_expression(z, false);
+            z = new_expression(EXPT_OPERATION, EXPI_SUBTRACTION, 2,
+                               copy_expression(y),
+                               copy_expression(temp));
+            free_expression(temp, false);
+            simplify(z, true);
+            
+            i++;
+            
         }
         
     }
     
-    replace_expression(source, result);
+    append_child(*factors, new_expression(EXPT_STRUCTURE, EXPI_LIST, 2,
+                                          copy_expression(w),
+                                          new_literal(1, i, 1)));
+    
+    free_expressions(8, symbol, a, b, c, g, w, y, z);
+    
+    return RETS_SUCCESS;
     
 }

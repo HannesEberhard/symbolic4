@@ -53,6 +53,7 @@ uint8_t symbolic4(char* buffer, const char* query) {
     
     allocated_pointers = calloc(ALLOCATED_POINTERS_LENGTH, sizeof(void*));
     memset(allocated_pointers, 0, ALLOCATED_POINTERS_LENGTH);
+    buffer[0] = '\0';
     
     root = new_expression(EXPT_STRUCTURE, EXPI_LIST, 0);
 
@@ -149,7 +150,7 @@ uint8_t process_factors(expression* source) {
             return RETS_UNCHANGED;
         }
     } else {
-        result = 0;
+        factor_square_free(&result, source->children[0]);
     }
     
     replace_expression(source, result);
@@ -421,12 +422,7 @@ uint8_t process_vector_triple_product(expression* source) {
 }
 
 void process_approximate(expression* source) {
-    
     approximate(source);
     literal_to_double_symbol(source);
-    
     replace_expression(source, copy_expression(source->children[0]));
-    
-    return;
-    
 }

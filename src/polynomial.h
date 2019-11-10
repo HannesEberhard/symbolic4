@@ -40,6 +40,6 @@ bool poly_is_square_free(expression* source);
 void make_monic(expression* source);
 uint8_t poly_gcd(expression** gcd, const expression* a, const expression* b);
 void poly_log_gcd(expression** gcd, const expression* source);
-void factor_square_free(expression* source);
+uint8_t factor_square_free(expression** factors, const expression* source);
 
 #endif /* polynomial_h */

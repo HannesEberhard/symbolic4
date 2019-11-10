@@ -316,6 +316,10 @@ void free_expression(expression* source, bool persistent) {
     
     uint8_t i;
     
+    if (source == NULL) {
+        return;
+    }
+    
     for (i = 0; i < source->child_count; i++) {
         if (source->children[i] == NULL) continue;
         free_expression(source->children[i], false);
@@ -324,7 +328,10 @@ void free_expression(expression* source, bool persistent) {
     
     source->child_count = 0;
     
-    if (!persistent) smart_free(source);
+    if (!persistent) {
+        smart_free(source);
+        source = NULL;
+    }
     
 }
 
@@ -391,8 +398,6 @@ void remove_child_at_index(expression* source, uint8_t index) {
     free_expression(source->children[index], false);
     source->children[index] = NULL;
     remove_null_children(source);
-    return;
-    
 }
 
 void remove_null_children(expression* source) {
@@ -604,9 +609,10 @@ bool expression_is_constant(const expression* source) {
 }
 
 bool symbol_is_constant(const expression* source) {
-    if (expressions_are_identical(source, new_symbol(EXPI_SYMBOL, "pi"), false) ||
-        expressions_are_identical(source, new_symbol(EXPI_SYMBOL, "e"), false) ||
-        expressions_are_identical(source, new_symbol(EXPI_SYMBOL, "i"), false)) {
+    if (source->identifier == EXPI_SYMBOL &&
+        (strcmp(source->value.symbolic, "pi") == 0 ||
+         strcmp(source->value.symbolic, "e") == 0 ||
+         strcmp(source->value.symbolic, "i") == 0)) {
         return true;
     } else {
         return false;
@@ -858,20 +864,32 @@ expression* guess_symbol(const expression* source, const char* custom_priorities
     }
     
     if (symbols->child_count != 0) {
-        return symbols->children[0];
+        symbol = copy_expression(symbols->children[0]);
+        free_expression(symbols, false);
+        return symbol;
     }
+
+    free_expression(symbols, false);
     
     return NULL;
     
 }
 
 expression* get_symbol(const expression* source) {
+    
+    expression* symbol;
+    
     if (source->identifier == EXPI_POLYNOMIAL_SPARSE) {
         return copy_expression(source->children[0]->children[2]);
     } else if (source->identifier == EXPI_POLYNOMIAL_DENSE) {
         return copy_expression(source->children[0]);
     } else {
-        return guess_symbol(source, "", 0);
+        symbol = guess_symbol(source, "", 0);
+        if (symbol) {
+            return symbol;
+        } else {
+            return new_symbol(EXPI_SYMBOL, "x");
+        }
     }
 }
 
