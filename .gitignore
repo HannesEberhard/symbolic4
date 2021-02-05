@@ -52,8 +52,11 @@ Mkfile.old
 dkms.conf
 
 *.DS_Store
-symbolic4.xcodeproj/
-documentation/
-test/test
-test/log_valgrind_massif_temp
-test/valgrind_memcheck_log.txt
+*.xcodeproj
+main
+docs/html
+docs/latex
+test/unit_testing/main
+test/fuzzing/main
+test/fuzzing/corpus
+test/fuzzing/crashes
